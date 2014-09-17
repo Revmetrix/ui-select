@@ -581,6 +581,7 @@
         ngModel.$parsers.unshift(function (inputValue) {
           var locals = {},
               result;
+
           if ($select.multiple){
             var resultMultiple = [];
             for (var j = inputValue.length - 1; j >= 0; j--) {
@@ -603,6 +604,7 @@
           var data = $select.parserResult.source (scope, { $select : {search:''}}), //Overwrite $search 
               locals = {},
               result;
+
           if (data){
             if ($select.multiple){
               var resultMultiple = [];
@@ -640,8 +642,15 @@
               }
             }
           }
+
           return inputValue;
         });
+
+        function updateRequiredValidity(value) {
+          var invalid = attrs.required && $select.multiple ? !value || value.length < 1 : !value;
+          ngModel.$setValidity('required', !invalid);
+          return !invalid;
+        }
 
         //Set reference to ngModel from uiSelectCtrl
         $select.ngModel = ngModel;
@@ -738,6 +747,7 @@
             //On v1.2.19 the 2nd and 3rd parameteres are ignored
             //On v1.3.0-beta+ 3rd parameter (revalidate) is true, to force $parsers to recreate model
             ngModel.$setViewValue(newValue, null, true);
+            updateRequiredValidity(newValue);
           });
           focusser.prop('disabled', true); //Focusser isn't needed if multiple
         }else{
@@ -745,6 +755,7 @@
             if (ngModel.$viewValue !== newValue) {
               ngModel.$setViewValue(newValue);
             }
+            updateRequiredValidity(newValue);
           });
         }
 
