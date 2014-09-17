@@ -65,7 +65,8 @@
     theme: 'bootstrap',
     searchEnabled: true,
     placeholder: '', // Empty by default, like HTML tag <select>
-    refreshDelay: 1000 // In milliseconds
+    refreshDelay: 1000, // In milliseconds
+    multiCloseOnSelect: true // Whether to close the options when one is selected for multi-select
   })
 
   // See Rename minErr and make it accessible from outside https://github.com/angular/angular.js/issues/6913
@@ -135,8 +136,8 @@
    * put as much logic in the controller (instead of the link functions) as possible so it can be easily tested.
    */
   .controller('uiSelectCtrl',
-    ['$scope', '$element', '$timeout', 'RepeatParser', 'uiSelectMinErr',
-    function($scope, $element, $timeout, RepeatParser, uiSelectMinErr) {
+    ['$scope', '$element', '$timeout', 'RepeatParser', 'uiSelectMinErr', 'uiSelectConfig',
+    function($scope, $element, $timeout, RepeatParser, uiSelectMinErr, uiSelectConfig) {
 
     var ctrl = this;
 
@@ -332,7 +333,11 @@
         } else {
           ctrl.selected = item;
         }
-        ctrl.close();
+
+        // If the items.length is 1, we are selecting the last item
+        if (!ctrl.multiple || uiSelectConfig.multiCloseOnSelect || ctrl.items.length === 1) {
+          ctrl.close();
+        }
       }
     };
 
@@ -545,8 +550,8 @@
   }])
 
   .directive('uiSelect',
-    ['$document', 'uiSelectConfig', 'uiSelectMinErr', '$compile', '$parse',
-    function($document, uiSelectConfig, uiSelectMinErr, $compile, $parse) {
+    ['$document', '$log', 'uiSelectConfig', 'uiSelectMinErr', '$compile', '$parse',
+    function($document, $log, uiSelectConfig, uiSelectMinErr, $compile, $parse) {
 
     return {
       restrict: 'EA',
@@ -759,7 +764,9 @@
         };
 
         function onDocumentClick(e) {
-          var contains = false;
+          var contains = false, 
+            isSelectItem = false,
+            $target = angular.element(e.target);
 
           if (window.jQuery) {
             // Firefox 3.6 does not support element.contains()
@@ -769,7 +776,11 @@
             contains = element[0].contains(e.target);
           }
 
-          if (!contains) {
+          // At this point the item has already been removed from the choices and is not a descendant of the directive element
+          // (The target of the click varies; we check all possibilities)
+          isSelectItem = $target.hasClass('ui-select-choice-item') || $target.hasClass('ui-select-choices-row-inner');
+
+          if (!contains && !isSelectItem) {
             $select.close();
             scope.$digest();
           }
@@ -878,6 +889,8 @@
     return {
       link: function (scope, element, attrs, ctrl, transclude) {
           transclude(scope, function (clone) {
+            // So that we can identify it later
+            clone.addClass('ui-select-choice-item');
             element.append(clone);
           });
         }
